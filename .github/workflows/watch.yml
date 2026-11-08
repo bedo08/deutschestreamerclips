@@ -1,0 +1,54 @@
+name: Kanal-Waechter (Bericht aufs Handy)
+
+on:
+  schedule:
+    # 21:30 UTC (22:30 Uhr Winterzeit): nach den Absicherungs-Starts beider
+    # Kanaele (Auto-Shorts 13:37 UTC, Deutschestreamerclips 20:43 UTC).
+    - cron: "30 21 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  actions: read
+  checks: read
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Pakete fuer die YouTube-Zahlen
+        run: pip install -q google-api-python-client google-auth-oauthlib google-auth-httplib2
+
+      - name: YouTube-Zugangsdaten aus Secrets wiederherstellen
+        env:
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_TOKEN: ${{ secrets.YT_TOKEN }}
+        run: |
+          printf '%s' "$YT_CLIENT_SECRET" > client_secret.json
+          printf '%s' "$YT_TOKEN" > token.json
+
+      - name: Kanaele pruefen und Bericht schicken
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python watch.py
+
+      - name: Geheimnisse wieder entfernen
+        if: always()
+        run: rm -f client_secret.json token.json
+
+      - name: Zahlenverlauf (stats.json) zurueck ins Repo
+        if: always()
+        run: |
+          git config user.name "clip-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add stats.json 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "Waechter: Tageszahlen"
+          git pull --rebase -q && git push
