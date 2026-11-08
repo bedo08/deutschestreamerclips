@@ -157,8 +157,12 @@ def main():
     yt = None
     if not dry:
         import upload
-        yt = upload.client()
-        upload.assert_channel(yt)    # bricht ab, wenn der Schluessel zum falschen Kanal gehoert
+        try:
+            yt = upload.client()
+            upload.assert_channel(yt)    # bricht ab, wenn der Schluessel zum falschen Kanal gehoert
+        except BaseException as e:
+            gh_error(f"YouTube-Anmeldung: {type(e).__name__}: {e}")
+            raise
 
     ok = 0
     for i, c in enumerate(clips):
@@ -184,13 +188,29 @@ def main():
             print(f"    hochgeladen: https://youtube.com/shorts/{vid}", flush=True)
             src.unlink(missing_ok=True)
             out.unlink(missing_ok=True)
-        except Exception:
+        except Exception as e:
             print(f"[{i+1}] FEHLER bei {c['url']}, wird beim naechsten Lauf erneut versucht:",
                   flush=True)
             traceback.print_exc()
+            gh_error(f"Clip {c['login']} '{c['title']}': {type(e).__name__}: {e}")
     print(f"Fertig: {ok} hochgeladen." if not dry else "Testlauf fertig.")
+    if not dry:
+        gh_notice(f"{ok} von {len(clips)} Clips hochgeladen")
     if not dry and ok == 0:
         sys.exit(1)
+
+
+def gh_error(msg):
+    """Fehler zusaetzlich als GitHub-Anmerkung ausgeben. Die Job-Protokolle
+    sind nur eingeloggt lesbar, Anmerkungen eines oeffentlichen Repos per API
+    auch ohne Login (2026-11-08: zweiter Lauf scheiterte, Grund unsichtbar)."""
+    if os.environ.get("GITHUB_ACTIONS"):
+        print("::error::" + " ".join(str(msg).split())[:900], flush=True)
+
+
+def gh_notice(msg):
+    if os.environ.get("GITHUB_ACTIONS"):
+        print("::notice::" + " ".join(str(msg).split())[:900], flush=True)
 
 
 if __name__ == "__main__":
