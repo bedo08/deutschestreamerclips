@@ -18,6 +18,7 @@ Aufruf:  python daily_run.py            (echter Lauf mit Upload)
 import json
 import os
 import subprocess
+from datetime import datetime, timezone
 import sys
 import traceback
 from pathlib import Path
@@ -65,7 +66,7 @@ def list_clips(login, rng):
     return clips
 
 
-def pick(posted):
+def pick(posted, want):
     done = {p["url"] for p in posted}
     chosen, per = [], {}
     for rng in ("24hr", "7d"):
@@ -75,7 +76,7 @@ def pick(posted):
                      if c["url"] not in done and c["views"] >= CFG["min_views"]
                      and c["duration"] >= CFG["min_duration"]]
         for c in sorted(pool, key=lambda c: -c["views"]):
-            if len(chosen) >= CFG["clips_per_day"]:
+            if len(chosen) >= want:
                 return chosen
             if c["url"] in {x["url"] for x in chosen}:
                 continue
@@ -145,7 +146,18 @@ def main():
     dry = "--dry-run" in sys.argv
     WORK.mkdir(exist_ok=True)
     posted = load_posted()
-    clips = pick(posted)
+    # Tagessperre (2026-11-08): Es gibt einen zweiten Start als Absicherung, falls
+    # GitHub den ersten verschluckt. Der holt nur nach, was heute (UTC) fehlt.
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    already = sum(1 for p in posted if p.get("date") == today)
+    want = CFG["clips_per_day"] - already
+    if want <= 0 and not dry:
+        print(f"Heute ({today}) schon {already} Clips hochgeladen, nichts zu tun.")
+        gh_notice(f"Heute schon {already} Clips hochgeladen, nichts zu tun")
+        return
+    if dry:
+        want = CFG["clips_per_day"]
+    clips = pick(posted, want)
     print(f"{len(clips)} Clips ausgewaehlt:", flush=True)
     for c in clips:
         print(f"  {c['views']:>6} Aufrufe  {c['login']}: {c['title']}", flush=True)
@@ -188,7 +200,7 @@ def main():
             gh_notice(f"Titel ({how}): {yt_title}")
             posted.append({"url": c["url"], "login": c["login"], "title": c["title"],
                            "yt_title": yt_title, "title_method": how,
-                           "views": c["views"], "youtube_id": vid})
+                           "views": c["views"], "youtube_id": vid, "date": today})
             save_posted(posted)
             ok += 1
             print(f"    hochgeladen: https://youtube.com/shorts/{vid}", flush=True)
