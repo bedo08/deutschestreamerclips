@@ -1,0 +1,64 @@
+name: Taeglicher Clip-Upload (Deutschestreamerclips)
+
+on:
+  schedule:
+    # 16:13 UTC (17:13 Uhr Oesterreich im Winter): nachmittags sind die Clips
+    # vom Vorabend-Stream da. Krumme Minute, weil volle Stunden bei GitHub
+    # oft verzoegert oder verschluckt werden.
+    - cron: "13 16 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-upload
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: ffmpeg installieren
+        run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
+
+      - name: Python-Pakete installieren
+        run: pip install -q -r requirements.txt
+
+      - name: Whisper-Modell aus dem Cache holen
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: whisper-medium-v1
+
+      - name: YouTube-Zugangsdaten aus Secrets wiederherstellen
+        env:
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_TOKEN: ${{ secrets.YT_TOKEN }}
+        run: |
+          printf '%s' "$YT_CLIENT_SECRET" > client_secret.json
+          printf '%s' "$YT_TOKEN" > token.json
+
+      - name: Clips holen, schneiden, hochladen
+        run: python daily_run.py
+
+      - name: Geheimnisse wieder entfernen
+        if: always()
+        run: rm -f client_secret.json token.json
+
+      - name: posted.json zurueck ins Repo (keine doppelten Uploads)
+        if: always()
+        run: |
+          git config user.name "clip-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add posted.json 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "Taeglicher Lauf: posted.json aktualisiert"
+          git pull --rebase -q && git push

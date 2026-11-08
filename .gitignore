@@ -1,0 +1,15 @@
+client_secret.json
+token.json
+.venv/
+work/
+downloads/
+clips/
+clips_v2/
+clips_final/
+_test_twitch/
+_vorschau/
+source_frames/
+_*.log
+_*.png
+_videolist.txt
+__pycache__/

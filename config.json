@@ -1,0 +1,14 @@
+{
+  "_info": "Einstellungen fuer daily_run.py. Streamer: Twitch-Name -> Anzeigename. Erlaubnis zum Hochladen laut Boss am 2026-11-08 von der ganzen Gruppe erteilt.",
+  "streamers": {
+    "xrohat": "Rohat",
+    "mertabimula": "Mert Abi",
+    "coachlim": "CoachLim",
+    "mausabi": "Mausabi"
+  },
+  "clips_per_day": 4,
+  "max_per_streamer": 2,
+  "min_views": 300,
+  "min_duration": 8,
+  "privacy": "public"
+}
