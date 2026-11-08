@@ -65,13 +65,19 @@ def chunks(words):
         yield group
 
 
-def transcribe(model, video):
-    """Woerter mit Zeitstempeln. Audio per ffmpeg, weil faster-whispers eigener
+def load_audio(video):
+    """Audio als 16-kHz-Mono-Array. Per ffmpeg, weil faster-whispers eigener
     Decoder (PyAV) in der backtalk-Umgebung nicht zur av-Version passt."""
     raw = subprocess.run(["ffmpeg", "-loglevel", "error", "-i", str(video), "-vn",
                           "-ac", "1", "-ar", "16000", "-f", "s16le", "-"],
                          capture_output=True, check=True).stdout
-    audio = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
+    return np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
+
+
+def transcribe(model, video, audio=None):
+    """Woerter mit Zeitstempeln."""
+    if audio is None:
+        audio = load_audio(video)
     if audio.size == 0:
         return []
     segments, _ = model.transcribe(audio, language="de", word_timestamps=True,

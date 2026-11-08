@@ -61,10 +61,12 @@ def make_title(clip, name):
 
 
 def make_description(clip, name):
+    """Bewusst OHNE Links (Boss, 2026-11-08): Externe Links in Shorts-
+    Beschreibungen verlangen eine Identitaetsbestaetigung des Kanals, sonst
+    gibt es Fehler. Credit deshalb nur als Text."""
     login = clip["login"]
     return "\n".join([
-        f"{name} live auf Twitch: https://www.twitch.tv/{login}",
-        f"Original-Clip: {clip['url']}",
+        f"Streamer: {name}, live auf Twitch unter {login}",
         "",
         "Die besten Momente deutscher Twitch-Streamer, jeden Tag neu.",
         "Alle Rechte an den Inhalten liegen bei den Streamern.",
@@ -73,9 +75,9 @@ def make_description(clip, name):
     ])
 
 
-def upload(yt, video, clip, name, privacy):
+def upload(yt, video, clip, name, privacy, title=None):
     body = {
-        "snippet": {"title": make_title(clip, name),
+        "snippet": {"title": title or make_title(clip, name),
                     "description": make_description(clip, name),
                     "tags": [name, clip["login"], "Twitch", "Clips", "Deutsche Streamer", "Shorts"],
                     "categoryId": "20",          # Gaming

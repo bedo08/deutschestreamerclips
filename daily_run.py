@@ -24,6 +24,7 @@ from pathlib import Path
 
 import detect_cam
 import subtitles
+import titles
 
 HERE = Path(__file__).resolve().parent
 CFG = json.loads((HERE / "config.json").read_text(encoding="utf-8"))
@@ -173,15 +174,20 @@ def main():
                                     "-o", str(src), "--force-overwrites", c["url"]], check=True)
             cam = detect_cam.detect(src)
             print(f"[{i+1}] {c['login']}: Facecam {cam['mode']} {cam.get('box', '')}", flush=True)
-            words = subtitles.transcribe(model, src)
+            audio = subtitles.load_audio(src)
+            words = subtitles.transcribe(model, src, audio)
+            name = CFG["streamers"][c["login"]]
+            yt_title, how = titles.make_title(words, audio, c["title"], name)
+            print(f"    Titel ({how}): {yt_title}", flush=True)
             out = WORK / f"{slug}.mp4"
             render(src, out, cam, words)
             if dry:
                 print(f"    fertig (Testlauf): {out}", flush=True)
                 continue
-            name = CFG["streamers"][c["login"]]
-            vid = upload.upload(yt, out, c, name, CFG["privacy"])
+            vid = upload.upload(yt, out, c, name, CFG["privacy"], title=yt_title)
+            gh_notice(f"Titel ({how}): {yt_title}")
             posted.append({"url": c["url"], "login": c["login"], "title": c["title"],
+                           "yt_title": yt_title, "title_method": how,
                            "views": c["views"], "youtube_id": vid})
             save_posted(posted)
             ok += 1
