@@ -38,6 +38,22 @@ def client(interactive=False):
     return build("youtube", "v3", credentials=creds)
 
 
+EXPECTED_CHANNEL = "Deutschestreamerclips"
+
+
+def assert_channel(yt):
+    """Kanal-Sperre (2026-11-08): Am 8.11. lag im GitHub-Secret versehentlich
+    der Schluessel des Auto-Fakten-Kanals, zwei Streamer-Clips gingen dort
+    oeffentlich online. Vor jedem Lauf pruefen, wem der Schluessel gehoert,
+    und sonst abbrechen statt aufs falsche Konto hochzuladen."""
+    items = yt.channels().list(part="snippet", mine=True).execute().get("items", [])
+    names = [i["snippet"]["title"] for i in items]
+    if EXPECTED_CHANNEL not in names:
+        raise SystemExit(f"KANAL-SPERRE: Schluessel gehoert zu {names}, erwartet "
+                         f"'{EXPECTED_CHANNEL}'. Nichts hochgeladen. Secret YT_TOKEN pruefen.")
+    print(f"Kanal geprueft: {EXPECTED_CHANNEL}", flush=True)
+
+
 def make_title(clip, name):
     t = clip["title"].strip() or "Unfassbarer Moment"
     t = t[0].upper() + t[1:]

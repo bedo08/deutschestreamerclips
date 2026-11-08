@@ -158,6 +158,7 @@ def main():
     if not dry:
         import upload
         yt = upload.client()
+        upload.assert_channel(yt)    # bricht ab, wenn der Schluessel zum falschen Kanal gehoert
 
     ok = 0
     for i, c in enumerate(clips):
