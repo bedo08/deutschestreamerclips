@@ -150,7 +150,11 @@ def main():
     # GitHub den ersten verschluckt. Der holt nur nach, was heute (UTC) fehlt.
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     already = sum(1 for p in posted if p.get("date") == today)
-    want = CFG["clips_per_day"] - already
+    # Sonntags einer weniger: Platz im Kontingent fuer das Langvideo (weekly.py),
+    # 5 x 1.600 + 1 x 1.600 = 9.600 von 10.000 Einheiten (2026-11-09).
+    sunday = datetime.now(timezone.utc).weekday() == 6
+    per_day = CFG.get("clips_per_day_sunday", CFG["clips_per_day"]) if sunday else CFG["clips_per_day"]
+    want = per_day - already
     if want <= 0 and not dry:
         print(f"Heute ({today}) schon {already} Clips hochgeladen, nichts zu tun.")
         gh_notice(f"Heute schon {already} Clips hochgeladen, nichts zu tun")

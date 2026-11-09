@@ -21,7 +21,7 @@ concurrency:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@v4
 
@@ -53,6 +53,10 @@ jobs:
       - name: Clips holen, schneiden, hochladen
         run: python daily_run.py
 
+      - name: Sonntags Langvideo "Die besten Clips der Woche" (weekly.py)
+        if: always()
+        run: python weekly.py
+
       - name: Geheimnisse wieder entfernen
         if: always()
         run: rm -f client_secret.json token.json
@@ -62,6 +66,6 @@ jobs:
         run: |
           git config user.name "clip-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add posted.json 2>/dev/null || true
+          git add posted.json weekly.json 2>/dev/null || true
           git diff --cached --quiet || git commit -m "Taeglicher Lauf: posted.json aktualisiert"
           git pull --rebase -q && git push
