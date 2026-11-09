@@ -13,7 +13,6 @@ on:
 
 permissions:
   contents: write
-  models: read      # GitHub Models (kostenlos) fuer die Titel, siehe titles.py
 
 concurrency:
   group: daily-upload
@@ -52,8 +51,6 @@ jobs:
           printf '%s' "$YT_TOKEN" > token.json
 
       - name: Clips holen, schneiden, hochladen
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   # nur fuer GitHub Models (Titel)
         run: python daily_run.py
 
       - name: Geheimnisse wieder entfernen

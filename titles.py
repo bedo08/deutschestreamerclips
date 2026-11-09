@@ -3,24 +3,15 @@
 Anlass (Boss, 2026-11-08): Die Twitch-Clip-Titel sind oft nichtssagend
 ("F", "Falle"), und der Titel entscheidet bei Shorts viel ueber die Reichweite.
 
-1. Erst GitHub Models (kostenlos in GitHub Actions ueber GITHUB_TOKEN, Workflow
-   braucht `permissions: models: read`). Bekommt Transkript + Twitch-Titel,
-   liefert einen kurzen deutschen Titel. Kein echtes Geld (Boss-Vorgabe).
-2. Faellt das aus (lokal kein Token, Limit, Fehler): Ersatz ohne KI. Der
-   markanteste Satz des Clips (laut, kurz, Ausruf) wird als Zitat-Titel genommen.
-3. Danach immer: Streamer-Name dran, keine Emojis, keine langen Gedankenstriche,
-   hoechstens 100 Zeichen (YouTube-Grenze).
+1. Der markanteste Satz des Clips (laut, kurz, Ausruf) wird als Zitat-Titel
+   genommen. Ohne KI: Der fruehere KI-Weg (GitHub Models) ist tot, der Dienst
+   wurde am 2026-07-30 eingestellt; Entscheidung 2026-11-09: Zitat-Titel bleiben.
+2. Gibt es keinen brauchbaren Satz: Twitch-Titel.
+3. Danach immer: Streamer-Name dran, hoechstens 100 Zeichen (YouTube-Grenze).
 """
-
-import json
-import os
-import re
-import urllib.request
 
 import numpy as np
 
-MODEL = "openai/gpt-4o-mini"
-ENDPOINT = "https://models.github.ai/inference/chat/completions"
 SR = 16000
 # Woerter, auf die kein fertiger Satz endet
 HALF = {"wie", "und", "oder", "aber", "der", "die", "das", "den", "dem", "des", "ein",
@@ -43,54 +34,8 @@ def sentences(words, gap=0.6):
     return out
 
 
-def transcript_text(words):
-    return " ".join(w.word.strip() for w in words).strip()
-
-
-def ai_title(transcript, twitch_title, name):
-    token = os.environ.get("GITHUB_TOKEN")
-    if not token or not transcript:
-        return None
-    prompt = (
-        f"Twitch-Clip von {name}. Original-Titel: \"{twitch_title}\".\n"
-        f"Was im Clip gesagt wird (automatisch erkannt, kann Fehler enthalten):\n"
-        f"\"{transcript[:1500]}\"\n\n"
-        "Schreib EINEN kurzen, packenden deutschen Titel fuer YouTube Shorts, "
-        "hoechstens 55 Zeichen. Er soll neugierig machen und zum Inhalt passen. "
-        "Nichts erfinden, was im Clip nicht vorkommt. Keine Emojis, keine Hashtags, "
-        "keine Anfuehrungszeichen, keinen Gedankenstrich, nicht den Streamer-Namen "
-        "anhaengen. Antworte nur mit dem Titel."
-    )
-    body = json.dumps({"model": MODEL, "temperature": 0.7, "max_tokens": 40,
-                       "messages": [{"role": "user", "content": prompt}]}).encode()
-    req = urllib.request.Request(ENDPOINT, data=body, method="POST", headers={
-        "Authorization": f"Bearer {token}", "Content-Type": "application/json",
-        "Accept": "application/json"})
-    raw = b""
-    try:
-        with urllib.request.urlopen(req, timeout=30) as r:
-            raw = r.read()
-            text = json.loads(raw)["choices"][0]["message"]["content"]
-    except Exception as e:
-        detail = str(e)[:200]
-        if raw:                  # Antwort kam, war aber kein brauchbares JSON
-            detail += " | Antwort: " + raw.decode("utf-8", "replace")[:300]
-        elif not hasattr(e, "read"):
-            detail += " | leere Antwort"
-        if hasattr(e, "read"):   # HTTPError: Antworttext von GitHub Models mitnehmen
-            try:
-                detail += " | " + e.read().decode("utf-8", "replace")[:300]
-            except Exception:
-                pass
-        # ::warning:: macht den Grund als oeffentliche Anmerkung sichtbar (ohne Login lesbar)
-        print("::warning::KI-Titel nicht verfuegbar (" + type(e).__name__ + ": "
-              + " ".join(detail.split()) + "), nehme Ersatz", flush=True)
-        return None
-    return clean(text) or None
-
-
 def quote_title(words, audio):
-    """Ersatz ohne KI: lautester, kurzer Satz als Zitat."""
+    """Lautester, kurzer Satz als Zitat."""
     best, best_score = None, -1e9
     for start, end, text in sentences(words):
         n = len(text.split())
@@ -110,19 +55,9 @@ def quote_title(words, audio):
     return f"\"{best[0].upper() + best[1:]}\""
 
 
-def clean(text):
-    t = text.strip().strip("\"'„“”").replace("—", " ").replace("–", " ")
-    t = re.sub(r"#\S+", "", t)
-    t = "".join(ch for ch in t if ord(ch) < 0x2190 or ch in "äöüÄÖÜß")  # Emojis raus
-    return " ".join(t.split())[:70]
-
-
 def make_title(words, audio, twitch_title, name):
-    """Gibt (titel, methode) zurueck. methode: 'ki', 'zitat' oder 'twitch'."""
-    t = ai_title(transcript_text(words), twitch_title, name)
-    method = "ki"
-    if not t:
-        t, method = quote_title(words, audio), "zitat"
+    """Gibt (titel, methode) zurueck. methode: 'zitat' oder 'twitch'."""
+    t, method = quote_title(words, audio), "zitat"
     if not t:
         tt = (twitch_title or "").strip()
         t = tt[0].upper() + tt[1:] if len(tt) >= 6 else "Damit hat keiner gerechnet"
