@@ -66,12 +66,25 @@ def ai_title(transcript, twitch_title, name):
     req = urllib.request.Request(ENDPOINT, data=body, method="POST", headers={
         "Authorization": f"Bearer {token}", "Content-Type": "application/json",
         "Accept": "application/json"})
+    raw = b""
     try:
         with urllib.request.urlopen(req, timeout=30) as r:
-            text = json.load(r)["choices"][0]["message"]["content"]
+            raw = r.read()
+            text = json.loads(raw)["choices"][0]["message"]["content"]
     except Exception as e:
-        print(f"    KI-Titel nicht verfuegbar ({type(e).__name__}: {str(e)[:120]}), nehme Ersatz",
-              flush=True)
+        detail = str(e)[:200]
+        if raw:                  # Antwort kam, war aber kein brauchbares JSON
+            detail += " | Antwort: " + raw.decode("utf-8", "replace")[:300]
+        elif not hasattr(e, "read"):
+            detail += " | leere Antwort"
+        if hasattr(e, "read"):   # HTTPError: Antworttext von GitHub Models mitnehmen
+            try:
+                detail += " | " + e.read().decode("utf-8", "replace")[:300]
+            except Exception:
+                pass
+        # ::warning:: macht den Grund als oeffentliche Anmerkung sichtbar (ohne Login lesbar)
+        print("::warning::KI-Titel nicht verfuegbar (" + type(e).__name__ + ": "
+              + " ".join(detail.split()) + "), nehme Ersatz", flush=True)
         return None
     return clean(text) or None
 
