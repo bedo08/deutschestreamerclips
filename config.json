@@ -6,8 +6,8 @@
     "coachlim": "CoachLim",
     "mausabi": "Mausabi"
   },
-  "clips_per_day": 4,
-  "max_per_streamer": 2,
+  "clips_per_day": 6,
+  "max_per_streamer": 3,
   "min_views": 300,
   "min_duration": 8,
   "privacy": "public"

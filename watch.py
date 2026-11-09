@@ -32,7 +32,7 @@ HERE = Path(__file__).resolve().parent
 STATS = HERE / "stats.json"
 CHANNELS = [
     {"name": "Auto Fakten Exklusiv", "id": "UCXwa75j39kDjz6In3zrPV3A", "per_day": 4},
-    {"name": "Deutschestreamerclips", "id": "UCEY6LjhCRhcyY6a34SHnNoA", "per_day": 4},
+    {"name": "Deutschestreamerclips", "id": "UCEY6LjhCRhcyY6a34SHnNoA", "per_day": 6},
 ]
 REPO = "bedo08/deutschestreamerclips"
 
