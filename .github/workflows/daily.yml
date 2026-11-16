@@ -66,6 +66,9 @@ jobs:
         run: |
           git config user.name "clip-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add posted.json weekly.json 2>/dev/null || true
+          # Jede Datei einzeln (2026-11-16): fehlte weekly.json, brach "git add"
+          # komplett ab, posted.json ging verloren und Clips kamen doppelt.
+          git add posted.json
+          if [ -f weekly.json ]; then git add weekly.json; fi
           git diff --cached --quiet || git commit -m "Taeglicher Lauf: posted.json aktualisiert"
           git pull --rebase -q && git push
